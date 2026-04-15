@@ -1,1 +1,0 @@
-import{a,c as t,i as s}from"./MPrivacyBanner.vue_vue_type_script_setup_true_lang-Cx3OArAK.js";const n="InvestorRegistry",e=a.investorRegistry;async function c(){return t(e,s,"investorCount",[],n)}async function g(r,o){return t(e,s,"getInvestorsPaginated",[r,o],n)}export{g,c as i};
