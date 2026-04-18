@@ -1,1 +1,0 @@
-import{b as e,c,a as i,d as r,e as t}from"./provider-DLyWKNEh.js";const s="MuHavenToken",o=i.muHavenToken;async function d(n){return e(o,r,"encryptedBalanceOf",[n],s)}async function p(n,a){return c(o,r,"mint",[n,a],s)}async function m(n,a){return e(n,t,"balanceOf",[a],"ERC20")}async function b(n,a,u){return c(n,t,"approve",[a,u],"ERC20")}export{b as a,m as b,d as e,p as m};
