@@ -1,1 +1,0 @@
-import{a as n,c as t,m as a,b as c}from"./provider-DIcnZq_e.js";const e="MuHavenEscrow",s=n.muhavenEscrow;async function d(r){return c(s,a,"authorizedCallers",[r],e)}async function i(r){return t(s,a,"redeem",[r],e)}export{d as i,i as r};
