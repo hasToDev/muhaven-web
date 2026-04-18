@@ -1,1 +1,0 @@
-import{a,b as t,i as s}from"./provider-CSUZHj1j.js";const n="InvestorRegistry",e=a.investorRegistry;async function c(){return t(e,s,"investorCount",[],n)}async function g(r,o){return t(e,s,"getInvestorsPaginated",[r,o],n)}export{g,c as i};
