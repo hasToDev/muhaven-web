@@ -1,0 +1,1 @@
+import{d3 as c}from"./index-Bc8fns0G.js";import{c as t,a as o}from"./provider-BMRFIvO6.js";async function s(a,r){return t(a,c,"balanceOf",[r],"ERC20")}async function f(a,r,n){return o(a,c,"approve",[r,n],"ERC20")}export{f as a,s as b};
