@@ -1,0 +1,1 @@
+import{d9 as a,dd as t}from"./index-XaGUR1Sy.js";import{c as s}from"./provider-B60SOth6.js";const n="InvestorRegistry",r=a.investorRegistry;async function c(){return s(r,t,"investorCount",[],n)}async function g(e,o){return s(r,t,"getInvestorsPaginated",[e,o],n)}export{g,c as i};
