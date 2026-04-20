@@ -1,0 +1,1 @@
+import{da as o,db as a}from"./index-D4KOifOT.js";import{a as t,c as n}from"./provider-VwDLl6jG.js";const e="MuHavenEscrow",s=o.muhavenEscrow;async function i(r){return n(s,a,"authorizedCallers",[r],e)}async function u(r){return t(s,a,"redeem",[r],e)}export{i,u as r};
