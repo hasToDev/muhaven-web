@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- CSP locks scripts to self + connect to backend + ZeroDev surfaces.
+         The Wave 5 on-ramp swap will need to relax connect-src for the
+         chosen provider (Sardine / Coinbase / MoonPay). NO inline
+         scripts — all interactivity runs from the bundled module.
+         Inline styles are not allowed; styles ship as a separate <link>.
+
+         Wave 5 buyer-side port (P1+P2+P3) — `connect-src` extends to:
+         - `https://passkeys.zerodev.app` — passkey-server (P1 ceremony)
+         - `https://rpc.zerodev.app` — bundler (P3 UserOps + paymaster)
+         - `https://sepolia-rollup.arbitrum.io` — Arb Sepolia RPC for
+           viem public-client reads (P2 USDC.balanceOf, P3 read paths)
+         - `https://testnet-cofhe.fhenix.zone` — Fhenix CoFHE coprocessor
+         - `https://testnet-cofhe-tn.fhenix.zone` — Fhenix TaskManager
+         - `https://testnet-cofhe-vrf.fhenix.zone` — Fhenix VRF
+         Without the cofhe hosts, the P3 encrypt-input call (inside
+         StableClient.wrap + SubscriptionClient.purchase) blocks at fetch.
+
+         Wave 5 P3 also requires:
+         - `wasm-unsafe-eval` in script-src — cofhe SDK loads WASM for
+           the ZK verifier signature step. Safe in our threat model:
+           the page only loads code from our own static bundle (no
+           remote script-src, no inline). `wasm-unsafe-eval` does NOT
+           re-enable `eval` for JavaScript.
+         - `worker-src 'self' blob:` — cofhe spawns a Web Worker for
+           the encryption job. `blob:` is needed because Vite emits the
+           worker bundle as a blob: URL at runtime.
+         - `frame-src https://iframe-shared-storage.vercel.app` — cofhe
+           SDK loads a cross-origin iframe for persistent permit cache.
+           Without it the SDK falls back to in-memory permits (we
+           tolerate this — fresh-permit each page load is fine for a
+           single-tab buyer session).
+
+         Prod cutover (2026-05-13):
+         - `script-src` allows `https://static.cloudflareinsights.com` —
+           CF Web Analytics injects `beacon.min.js` at the proxy layer.
+         - `connect-src` allows `https://cloudflareinsights.com` for
+           the beacon POSTs.
+         - `frame-ancestors` removed from the meta tag (browsers ignore
+           it via meta; add via Cloudflare Transform Rule for
+           click-jacking protection — operator follow-up). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.muhaven.app https://api-stage.muhaven.app http://localhost:3000 https://passkeys.zerodev.app https://rpc.zerodev.app https://sepolia-rollup.arbitrum.io https://testnet-cofhe.fhenix.zone https://testnet-cofhe-tn.fhenix.zone https://testnet-cofhe-vrf.fhenix.zone https://cloudflareinsights.com; img-src 'self' data:; font-src 'self'; worker-src 'self' blob:; frame-src https://iframe-shared-storage.vercel.app; base-uri 'none';"
+    />
+    <title>MuHaven — Checkout</title>
+    <link rel="icon" type="image/x-icon" href="/pay/favicon.ico" />
+    <link rel="stylesheet" href="/pay/styles.css" />
+    <script type="module" crossorigin src="/pay/assets/index-y1ZGikM6.js"></script>
+  </head>
+  <body>
+    <main id="app" data-state="loading">
+      <header class="brand">
+        <span class="logo">MuHaven</span>
+        <span class="environment"></span>
+      </header>
+
+      <section id="loading" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading checkout…</p>
+      </section>
+
+      <section id="error" hidden>
+        <h1>Couldn't load this checkout</h1>
+        <p class="error-detail"></p>
+        <p class="hint">Double-check the URL or ask the issuer for a fresh link.</p>
+      </section>
+
+      <section id="checkout" hidden>
+        <div class="issuer">
+          <span class="label">You are paying</span>
+          <span class="name"></span>
+          <span class="badge" hidden>Verified</span>
+        </div>
+        <div class="amount-block">
+          <span class="amount"></span>
+          <span class="symbol">USDC</span>
+        </div>
+        <p class="memo"></p>
+        <p class="status-pill" data-status=""></p>
+
+        <div id="step-pending" class="step" hidden>
+          <h2 tabindex="-1">1 · Sign in with passkey</h2>
+          <p>
+            We'll create a passkey-protected smart account for you. The
+            same passkey logs you into the MuHaven dashboard later — no
+            seed phrase to write down.
+          </p>
+          <button id="cta-passkey" class="cta">Continue with passkey</button>
+          <!-- Plan C (2026-05-15) — when the picker offers BOTH Windows
+               Hello AND "Use a different device / Google Password Manager",
+               pick the same option you registered with the first time.
+               Mixing the two providers on a single account leaves a
+               credential reachable only from one provider (Windows
+               native passkey doesn't sync to GPM and vice versa). -->
+          <p class="hint">
+            <strong>Tip:</strong> On Windows, the passkey picker may offer
+            both Windows Hello and a phone/Google Password Manager option.
+            Pick the SAME provider you used to register — they don't sync
+            between each other.
+          </p>
+        </div>
+
+        <div id="step-funding" class="step" hidden>
+          <h2 tabindex="-1">2 · Top up testnet USDC</h2>
+          <p>
+            Your account address — copy it and paste into the Circle
+            faucet. We'll watch for the deposit and continue automatically.
+          </p>
+          <code class="address" id="wallet-address"></code>
+          <div class="cta-row">
+            <button id="cta-copy-address" class="cta-secondary">Copy address</button>
+            <a
+              id="cta-faucet"
+              class="cta"
+              href="https://faucet.circle.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Open Circle faucet</a>
+          </div>
+          <p class="hint">
+            <strong>Production trajectory:</strong> in Wave 5 this panel
+            swaps to Sardine / Coinbase Onramp / MoonPay. The wire shape
+            (wallet address + amount) stays the same.
+          </p>
+        </div>
+
+        <div id="step-wrapped" class="step" hidden>
+          <h2 tabindex="-1">3 · Buy the asset</h2>
+          <p>
+            Confirm with your passkey to wrap USDC into confidential
+            mhUSDC and complete the purchase. Six on-chain steps run
+            under the hood — the progress below shows where you are.
+          </p>
+          <button id="cta-buy" class="cta">Confirm purchase</button>
+          <!-- Wave 5 P3 — purchase progress indicator. Stays empty
+               (hidden via CSS :empty selector) until executePurchase
+               fires its first onProgress callback. -->
+          <div class="purchase-progress" data-purchase-progress></div>
+        </div>
+
+        <div id="step-purchased" class="step" hidden>
+          <h2 tabindex="-1">4 · Settling on chain</h2>
+          <p>
+            Your purchase is confirming. The page will update once the
+            issuer's webhook fires.
+          </p>
+          <code class="tx-hash" id="purchase-tx"></code>
+        </div>
+
+        <div id="step-settled" class="step" hidden>
+          <h2 tabindex="-1">Done — you're a holder.</h2>
+          <p>
+            Open the MuHaven dashboard to view your encrypted balance and
+            track yields.
+          </p>
+          <a class="cta" href="/" id="cta-success">Go to dashboard</a>
+        </div>
+
+        <div id="step-failed" class="step" hidden>
+          <h2 tabindex="-1">Something went wrong</h2>
+          <p class="failure-detail"></p>
+          <a class="cta-secondary" href="/" id="cta-cancel">Cancel</a>
+        </div>
+      </section>
+    </main>
+    <!--
+      Wave 5 buyer-side port (P2) — sr-only live regions for state
+      transitions only. The visible `[data-funding-poll-status]`
+      element updates every 5 s with the latest balance, but screen
+      readers only hear the discrete transitions:
+        - waiting → funded → preparing-next-step
+        - waiting → error
+        - retry attempts (announced once per attempt, not per poll)
+      `role="status"` ≡ aria-live="polite"; `role="alert"` ≡
+      aria-live="assertive". Hard failures route through the alert
+      region so the user is interrupted; routine progress uses the
+      polite region.
+    -->
+    <div class="sr-only" data-funding-poll-announce role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="sr-only" data-funding-poll-alert role="alert" aria-atomic="true"></div>
+    <!-- Wave 5 P3 — purchase-stage announcements. Each `executePurchase`
+         onProgress callback writes the stage headline + detail here so
+         screen-reader users hear the 6-step ceremony progress without
+         visual updates spamming the polite channel. -->
+    <div class="sr-only" data-purchase-announce role="status" aria-live="polite" aria-atomic="true"></div>
+    <!-- Wave 5 P3 (post-review fix) — purchase-stage HARD-FAILURE
+         announcements. Separate from the funding alert region so an
+         end-of-ceremony backend hand-off failure can't overwrite (or
+         be overwritten by) a still-relevant funding-phase alert. -->
+    <div class="sr-only" data-purchase-alert role="alert" aria-atomic="true"></div>
+  </body>
+</html>
