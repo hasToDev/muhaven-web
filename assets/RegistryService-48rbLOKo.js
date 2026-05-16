@@ -1,1 +1,0 @@
-import{dB as r,dC as d}from"./index-Y-rB1jnA.js";import{c as e}from"./provider-Cxfz-AXV.js";const s="InvestorRegistry",o=d.investorRegistry;async function g(t){return e(o,r,"holderCount",[t],s)}async function u(t,n,a){return e(o,r,"getHoldersPaginated",[t,n,a],s)}export{u as g,g as h};
