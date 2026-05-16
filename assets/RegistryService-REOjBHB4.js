@@ -1,0 +1,1 @@
+import{dB as r,dC as d}from"./index-q30M8K4K.js";import{c as e}from"./provider-CVRuRDuZ.js";const s="InvestorRegistry",o=d.investorRegistry;async function g(t){return e(o,r,"holderCount",[t],s)}async function u(t,n,a){return e(o,r,"getHoldersPaginated",[t,n,a],s)}export{u as g,g as h};
