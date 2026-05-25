@@ -1,0 +1,1 @@
+import{de as o,df as c}from"./index-BBzk8erJ.js";function a(){const e=o(),{address:n,connecting:t,connected:s,error:r}=c(e);return{address:n,connecting:t,connected:s,error:r,connect:e.connect,register:e.register,disconnect:e.disconnect,signMessage:e.signMessage,sendUserOperation:e.sendUserOperation,getViemClients:e.getViemClients,tryReconnect:e.tryReconnect}}export{a as u};
